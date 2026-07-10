@@ -38,9 +38,9 @@ const (
 )
 
 // Agents reconciles operator-managed persistent agents.
-// Task 4 extends this interface with Validate.
 type Agents interface {
 	EnsureAgents(jenkins *v1alpha2.Jenkins) (done bool, err error)
+	Validate(jenkins *v1alpha2.Jenkins) []string
 }
 
 type agents struct {
