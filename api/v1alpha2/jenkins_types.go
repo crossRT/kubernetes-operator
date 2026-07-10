@@ -13,6 +13,13 @@ type JenkinsSpec struct {
 	// Every single change here requires a pod restart.
 	Master JenkinsMaster `json:"master"`
 
+	// Agents defines persistent inbound (JNLP) Jenkins agents managed by the operator.
+	// Each agent is registered as a Jenkins node and run as a Kubernetes Deployment.
+	// Node registration is stored in $JENKINS_HOME; use spec.master.persistentVolumeClaim
+	// for a PVC-backed $JENKINS_HOME to persist agents across master restarts.
+	// +optional
+	Agents []Agent `json:"agents,omitempty"`
+
 	// SeedJobs defines list of Jenkins Seed Job configurations
 	// More info: https://jenkinsci.github.io/kubernetes-operator/docs/getting-started/latest/configuring-seed-jobs-and-pipelines/
 	// +optional
@@ -409,6 +416,45 @@ type JenkinsMaster struct {
 	// Defaults to 30 seconds.
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+}
+
+// Agent defines a persistent inbound (JNLP) Jenkins agent managed by the operator.
+type Agent struct {
+	// Name is the unique agent name. Used as the Jenkins node name and the basis
+	// for the agent Deployment name (<jenkinsName>-<name>). Must be a DNS label.
+	Name string `json:"name"`
+
+	// Image is the inbound agent image. Defaults to the operator's pinned
+	// jenkins/inbound-agent image when empty.
+	// +optional
+	Image string `json:"image,omitempty"`
+
+	// Replicas is the number of agent pods. Defaults to 1.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=255
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// NumExecutors is the number of executors the Jenkins node exposes. Defaults to 1.
+	// +optional
+	NumExecutors int `json:"numExecutors,omitempty"`
+
+	// Label is the Jenkins label(s) assigned to the node, space-separated.
+	// Defaults to Name when empty.
+	// +optional
+	Label string `json:"label,omitempty"`
+
+	// Resources are the compute resources for the agent container.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// NodeSelector for the agent pod.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Tolerations for the agent pod.
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // Service defines Kubernetes service attributes
