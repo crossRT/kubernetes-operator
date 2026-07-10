@@ -49,12 +49,6 @@ const (
 	defaultAgentImage = "jenkins/inbound-agent:3248.v65ecb_254c298-6"
 
 	creatingGroovyScriptName = "seed-job-groovy-script.groovy"
-
-	homeVolumeName = "home"
-	homeVolumePath = "/home/jenkins/agent"
-
-	workspaceVolumeName = "workspace"
-	workspaceVolumePath = "/home/jenkins/workspace"
 )
 
 var seedJobGroovyScriptTemplate = template.Must(template.New(creatingGroovyScriptName).Parse(`
@@ -412,111 +406,21 @@ func agentDeploymentName(jenkins v1alpha2.Jenkins, agentName string) string {
 }
 
 func agentDeployment(jenkins *v1alpha2.Jenkins, namespace string, agentName string, secret string, kubernetesDomainName string) (*appsv1.Deployment, error) {
-	jenkinsHTTPServiceFQDN, err := resources.GetJenkinsHTTPServiceFQDN(jenkins, kubernetesDomainName)
-	if err != nil {
-		return nil, err
-	}
-
 	agentImage := jenkins.Spec.SeedJobAgentImage
 	if jenkins.Spec.SeedJobAgentImage == "" {
 		agentImage = defaultAgentImage
 	}
-
-	suffix := ""
-	if prefix, ok := resources.GetJenkinsOpts(*jenkins)["prefix"]; ok {
-		suffix = prefix
-	}
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agentDeploymentName(*jenkins, agentName),
-			Namespace: namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					BlockOwnerDeletion: &[]bool{true}[0],
-					Controller:         &[]bool{true}[0],
-					Kind:               jenkins.Kind,
-					Name:               jenkins.Name,
-					APIVersion:         jenkins.APIVersion,
-					UID:                jenkins.UID,
-				},
-			},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					NodeSelector:     jenkins.Spec.Master.NodeSelector,
-					Tolerations:      jenkins.Spec.Master.Tolerations,
-					ImagePullSecrets: jenkins.Spec.Master.ImagePullSecrets,
-					HostAliases:      jenkins.Spec.Master.HostAliases,
-					Containers: []corev1.Container{
-						{
-							Name:  "jnlp",
-							Image: agentImage,
-							Env: []corev1.EnvVar{
-								{
-									Name:  "JENKINS_WEB_SOCKET",
-									Value: "true",
-								},
-								{
-									Name:  "JENKINS_SECRET",
-									Value: secret,
-								},
-								{
-									Name:  "JENKINS_AGENT_NAME",
-									Value: agentName,
-								},
-								{
-									Name: "JENKINS_URL",
-									Value: fmt.Sprintf("http://%s:%d%s",
-										jenkinsHTTPServiceFQDN,
-										jenkins.Spec.Service.Port,
-										suffix),
-								},
-								{
-									Name:  "JENKINS_AGENT_WORKDIR",
-									Value: homeVolumePath,
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      homeVolumeName,
-									MountPath: homeVolumePath,
-								},
-								{
-									Name:      workspaceVolumeName,
-									MountPath: workspaceVolumePath,
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: homeVolumeName,
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-						{
-							Name: workspaceVolumeName,
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": fmt.Sprintf("%s-selector", agentName),
-					},
-				},
-			},
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": fmt.Sprintf("%s-selector", agentName),
-				},
-			},
-		},
-	}, nil
+	return resources.NewAgentDeployment(jenkins, kubernetesDomainName, resources.AgentDeploymentParams{
+		DeploymentName:   agentDeploymentName(*jenkins, agentName),
+		AgentName:        agentName,
+		Namespace:        namespace,
+		Image:            agentImage,
+		Secret:           secret,
+		NodeSelector:     jenkins.Spec.Master.NodeSelector,
+		Tolerations:      jenkins.Spec.Master.Tolerations,
+		ImagePullSecrets: jenkins.Spec.Master.ImagePullSecrets,
+		HostAliases:      jenkins.Spec.Master.HostAliases,
+	})
 }
 
 func seedJobCreatingGroovyScript(seedJob v1alpha2.SeedJob) (string, error) {
