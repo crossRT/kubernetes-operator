@@ -167,6 +167,20 @@ func (r *JenkinsBaseConfigurationReconciler) validateVolumes() ([]string, error)
 		}
 	}
 
+	if pvc := r.Configuration.Jenkins.Spec.Master.PersistentVolumeClaim; pvc != nil {
+		jenkinsHomeVolume := corev1.Volume{
+			Name: resources.JenkinsHomeVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: pvc,
+			},
+		}
+		if msg, err := r.validatePersistentVolumeClaim(jenkinsHomeVolume); err != nil {
+			return nil, err
+		} else if len(msg) > 0 {
+			messages = append(messages, msg...)
+		}
+	}
+
 	return messages, nil
 }
 

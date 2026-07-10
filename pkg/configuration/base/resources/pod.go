@@ -88,6 +88,20 @@ func getJenkinsHomePath(jenkins *v1alpha2.Jenkins) string {
 	return defaultJenkinsHomePath
 }
 
+// getJenkinsHomeVolumeSource returns the volume source used for the Jenkins home
+// directory. When a PersistentVolumeClaim is configured it is used to persist
+// $JENKINS_HOME across pod restarts, otherwise an emptyDir is used.
+func getJenkinsHomeVolumeSource(jenkins *v1alpha2.Jenkins) corev1.VolumeSource {
+	if jenkins.Spec.Master.PersistentVolumeClaim != nil {
+		return corev1.VolumeSource{
+			PersistentVolumeClaim: jenkins.Spec.Master.PersistentVolumeClaim,
+		}
+	}
+	return corev1.VolumeSource{
+		EmptyDir: &corev1.EmptyDirVolumeSource{},
+	}
+}
+
 // GetJenkinsMasterPodBaseVolumes returns Jenkins master pod volumes required by operator
 func GetJenkinsMasterPodBaseVolumes(jenkins *v1alpha2.Jenkins) []corev1.Volume {
 	configMapVolumeSourceDefaultMode := corev1.ConfigMapVolumeSourceDefaultMode
@@ -95,10 +109,8 @@ func GetJenkinsMasterPodBaseVolumes(jenkins *v1alpha2.Jenkins) []corev1.Volume {
 	var scriptsVolumeDefaultMode int32 = 0777
 	volumes := []corev1.Volume{
 		{
-			Name: JenkinsHomeVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
+			Name:         JenkinsHomeVolumeName,
+			VolumeSource: getJenkinsHomeVolumeSource(jenkins),
 		},
 		{
 			Name: jenkinsScriptsVolumeName,

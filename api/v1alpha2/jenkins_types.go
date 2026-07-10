@@ -344,6 +344,15 @@ type JenkinsMaster struct {
 	// +optional
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
+	// PersistentVolumeClaim, when set, is used as the volume source for the
+	// Jenkins home directory ($JENKINS_HOME) instead of the default emptyDir.
+	// This persists Jenkins home across Jenkins master pod restarts. The
+	// referenced PersistentVolumeClaim must already exist in the same namespace
+	// as the Jenkins CR.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes
+	// +optional
+	PersistentVolumeClaim *corev1.PersistentVolumeClaimVolumeSource `json:"persistentVolumeClaim,omitempty"`
+
 	// If specified, the pod's tolerations.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`

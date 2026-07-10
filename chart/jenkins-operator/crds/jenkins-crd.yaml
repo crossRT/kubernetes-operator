@@ -1157,6 +1157,26 @@ spec:
                       labels for the pod to be scheduled on that node. More info:
                       https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                     type: object
+                  persistentVolumeClaim:
+                    description: 'PersistentVolumeClaim, when set, is used as the volume
+                      source for the Jenkins home directory ($JENKINS_HOME) instead
+                      of the default emptyDir. This persists Jenkins home across Jenkins
+                      master pod restarts. The referenced PersistentVolumeClaim must
+                      already exist in the same namespace as the Jenkins CR. More info:
+                      https://kubernetes.io/docs/concepts/storage/persistent-volumes'
+                    properties:
+                      claimName:
+                        description: 'ClaimName is the name of a PersistentVolumeClaim
+                          in the same namespace as the pod using this volume. More
+                          info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims'
+                        type: string
+                      readOnly:
+                        description: Will force the ReadOnly setting in VolumeMounts.
+                          Default false.
+                        type: boolean
+                    required:
+                    - claimName
+                    type: object
                   plugins:
                     description: Plugins contains plugins required by user
                     items:

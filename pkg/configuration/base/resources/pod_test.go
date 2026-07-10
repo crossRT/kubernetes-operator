@@ -6,6 +6,7 @@ import (
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestGetJenkinsMasterPodBaseVolumes(t *testing.T) {
@@ -144,6 +145,47 @@ func TestGetJenkinsMasterPodBaseVolumes(t *testing.T) {
 		assert.True(t, groovyExists)
 		assert.True(t, cascExists)
 	})
+}
+
+func TestGetJenkinsHomeVolumeSource(t *testing.T) {
+	t.Run("defaults to emptyDir when no PersistentVolumeClaim is set", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{}
+
+		source := getJenkinsHomeVolume(t, jenkins)
+
+		assert.NotNil(t, source.EmptyDir)
+		assert.Nil(t, source.PersistentVolumeClaim)
+	})
+	t.Run("uses the PersistentVolumeClaim when set", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "jenkins-home-pvc",
+					},
+				},
+			},
+		}
+
+		source := getJenkinsHomeVolume(t, jenkins)
+
+		assert.Nil(t, source.EmptyDir)
+		assert.NotNil(t, source.PersistentVolumeClaim)
+		assert.Equal(t, "jenkins-home-pvc", source.PersistentVolumeClaim.ClaimName)
+	})
+}
+
+// getJenkinsHomeVolume returns the VolumeSource of the reserved jenkins-home volume
+// produced by GetJenkinsMasterPodBaseVolumes.
+func getJenkinsHomeVolume(t *testing.T, jenkins *v1alpha2.Jenkins) corev1.VolumeSource {
+	t.Helper()
+	for _, volume := range GetJenkinsMasterPodBaseVolumes(jenkins) {
+		if volume.Name == JenkinsHomeVolumeName {
+			return volume.VolumeSource
+		}
+	}
+	t.Fatalf("volume %q not found", JenkinsHomeVolumeName)
+	return corev1.VolumeSource{}
 }
 
 func checkSecretVolumesPresence(jenkins *v1alpha2.Jenkins) (groovyExists bool, cascExists bool) {

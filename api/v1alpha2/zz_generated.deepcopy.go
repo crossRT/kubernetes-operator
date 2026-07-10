@@ -339,6 +339,11 @@ func (in *JenkinsMaster) DeepCopyInto(out *JenkinsMaster) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.PersistentVolumeClaim != nil {
+		in, out := &in.PersistentVolumeClaim, &out.PersistentVolumeClaim
+		*out = new(corev1.PersistentVolumeClaimVolumeSource)
+		**out = **in
+	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]corev1.Toleration, len(*in))
