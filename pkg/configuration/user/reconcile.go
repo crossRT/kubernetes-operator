@@ -8,6 +8,7 @@ import (
 	"github.com/jenkinsci/kubernetes-operator/pkg/configuration"
 	"github.com/jenkinsci/kubernetes-operator/pkg/configuration/backuprestore"
 	"github.com/jenkinsci/kubernetes-operator/pkg/configuration/base/resources"
+	"github.com/jenkinsci/kubernetes-operator/pkg/configuration/user/agents"
 	"github.com/jenkinsci/kubernetes-operator/pkg/configuration/user/casc"
 	"github.com/jenkinsci/kubernetes-operator/pkg/configuration/user/seedjobs"
 	"github.com/jenkinsci/kubernetes-operator/pkg/groovy"
@@ -76,6 +77,26 @@ func (r *reconcileUserConfiguration) ReconcileOthers() (reconcile.Result, error)
 		return result, nil
 	}
 
+	result, err = r.ensureAgents()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if result.Requeue {
+		return result, nil
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func (r *reconcileUserConfiguration) ensureAgents() (reconcile.Result, error) {
+	agentsClient := agents.New(r.jenkinsClient, r.Configuration)
+	done, err := agentsClient.EnsureAgents(r.Configuration.Jenkins)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !done {
+		return reconcile.Result{Requeue: true}, nil
+	}
 	return reconcile.Result{}, nil
 }
 
